@@ -1,0 +1,30 @@
+{
+  "games": {
+    "genshin": {
+      "name": "Genshin Impact",
+      "executables": ["GenshinImpact.exe", "YuanShen.exe"],
+      "color": "#00d2be",
+      "icon": "/assets/Genshin_Impact_logo.webp"
+    },
+    "star_rail": {
+      "name": "Honkai: Star Rail",
+      "executables": ["StarRail.exe"],
+      "color": "#e0a354",
+      "icon": "/assets/HSR_logo.png"
+    },
+    "honkai_3rd": {
+      "name": "Honkai Impact 3rd",
+      "executables": ["BH3.exe"],
+      "color": "#9b51e0",
+      "icon": "⚔️"
+    }
+  },
+  "settings": {
+    "poll_interval_seconds": 3,
+    "idle_timeout_seconds": 60,
+    "server_host": "127.0.0.1",
+    "server_port": 5000,
+    "dashboard_url": "http://127.0.0.1:5000",
+    "theme": "dark"
+  }
+}
