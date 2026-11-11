@@ -2,6 +2,9 @@
 
 An ultra-lightweight, automated background playtime tracker and glassmorphic dashboard for **Genshin Impact**, **Honkai: Star Rail**, and **Honkai Impact 3rd**.
 
+[![Download Latest Release](https://img.shields.io/badge/Download-Setup--HoYoverseTracker.exe-00d2be?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/Ishan1909/hoyoverse-playtime-tracker/releases/download/v1.0.0/Setup-HoYoverseTracker.exe)
+[![Release](https://img.shields.io/badge/Release-v1.0.0-e0a354?style=for-the-badge)](https://github.com/Ishan1909/hoyoverse-playtime-tracker/releases/tag/v1.0.0)
+
 ---
 
 ## ⚡ Performance Highlights
@@ -56,8 +59,10 @@ An ultra-lightweight, automated background playtime tracker and glassmorphic das
 
 The compiled single-file installer is self-contained and requires no prerequisites:
 
-- Download: **`Setup-HoYoverseTracker.exe`** (Available under Releases)
-- Run the setup to automatically configure the background monitor, start menu, and desktop shortcuts.
+- 📥 **Direct Download**: **[Setup-HoYoverseTracker.exe (v1.0.0)](https://github.com/Ishan1909/hoyoverse-playtime-tracker/releases/download/v1.0.0/Setup-HoYoverseTracker.exe)**
+- 🏷️ **GitHub Release Page**: **[View Release v1.0.0](https://github.com/Ishan1909/hoyoverse-playtime-tracker/releases/tag/v1.0.0)**
+
+Run the setup wizard to automatically configure the background monitor, start menu entry, and desktop shortcuts.
 
 ---
 
