@@ -1,0 +1,827 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HoYoverse Playtime Tracker</title>
+    <!-- PWA Manifest & Meta -->
+    <link rel="manifest" href="/manifest.json">
+    <link rel="icon" type="image/png" href="/static/icon-192.png">
+    <meta name="theme-color" content="#00d2be">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Game Tracker">
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Outfit', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        dark: {
+                            900: '#0a0d14',
+                            800: '#101622',
+                            700: '#172033',
+                            600: '#23304b',
+                            border: 'rgba(255, 255, 255, 0.08)'
+                        },
+                        genshin: '#00d2be',
+                        starRail: '#e0a354',
+                        honkai3: '#9b51e0'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background: radial-gradient(circle at 50% -20%, #1e293b 0%, #0a0d14 70%);
+            min-height: 100vh;
+        }
+        .glass-card {
+            background: rgba(16, 22, 34, 0.75);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+        .pulse-glow {
+            box-shadow: 0 0 25px rgba(0, 210, 190, 0.45);
+            animation: pulse-glow-anim 2s infinite ease-in-out;
+        }
+        @keyframes pulse-glow-anim {
+            0%, 100% { opacity: 0.9; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.008); box-shadow: 0 0 35px rgba(0, 210, 190, 0.65); }
+        }
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0a0d14;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #23304b;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #3b82f6;
+        }
+    </style>
+</head>
+<body class="text-slate-100 font-sans antialiased selection:bg-teal-500 selection:text-black pb-12">
+
+    <!-- Dynamic Game Selection Modal (Prompts user to select between Genshin and Star Rail) -->
+    <div id="gameSelectorModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden items-center justify-center p-4">
+        <div class="glass-card max-w-lg w-full rounded-2xl p-6 border border-white/15 shadow-2xl space-y-6 relative">
+            <button onclick="closeGameSelector()" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white flex items-center justify-center text-lg transition" title="Close">
+                ✕
+            </button>
+            <div class="text-center space-y-1.5">
+                <div class="w-12 h-12 mx-auto rounded-2xl bg-gradient-to-tr from-teal-500 to-amber-500 flex items-center justify-center text-2xl shadow-lg shadow-teal-500/20 mb-2">
+                    🎮
+                </div>
+                <h3 class="text-2xl font-bold text-white tracking-tight">Choose Your Games</h3>
+                <p class="text-xs text-slate-400">Select which games you play to personalize your dashboard</p>
+            </div>
+
+            <!-- Game Option Cards -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <!-- Genshin Option -->
+                <div id="optGenshin" onclick="toggleGameOption('genshin')" class="cursor-pointer rounded-xl p-4 border transition-all duration-200 flex flex-col items-center text-center space-y-3 bg-dark-800/80 border-teal-500 shadow-lg shadow-teal-500/10">
+                    <div class="relative w-16 h-16 rounded-xl bg-dark-900/60 p-2 border border-white/10 flex items-center justify-center">
+                        <img src="/assets/Genshin_Impact_logo.webp" class="w-12 h-12 object-contain" alt="Genshin Impact" onerror="this.outerHTML='<span class=\'text-3xl\'>🍃</span>'">
+                        <div id="checkGenshin" class="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-teal-400 text-dark-900 flex items-center justify-center text-xs font-bold shadow">
+                            ✓
+                        </div>
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-white text-sm">Genshin Impact</h4>
+                        <p class="text-xs text-teal-400 font-medium">Teyvat Journeys</p>
+                    </div>
+                </div>
+
+                <!-- Star Rail Option -->
+                <div id="optStarRail" onclick="toggleGameOption('star_rail')" class="cursor-pointer rounded-xl p-4 border transition-all duration-200 flex flex-col items-center text-center space-y-3 bg-dark-800/80 border-amber-500 shadow-lg shadow-amber-500/10">
+                    <div class="relative w-16 h-16 rounded-xl bg-dark-900/60 p-2 border border-white/10 flex items-center justify-center">
+                        <img src="/assets/HSR_logo.png" class="w-12 h-12 object-contain" alt="Honkai: Star Rail" onerror="this.outerHTML='<span class=\'text-3xl\'>🚂</span>'">
+                        <div id="checkStarRail" class="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-amber-400 text-dark-900 flex items-center justify-center text-xs font-bold shadow">
+                            ✓
+                        </div>
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-white text-sm">Honkai: Star Rail</h4>
+                        <p class="text-xs text-amber-400 font-medium">Astral Express</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action buttons -->
+            <div class="pt-2">
+                <button onclick="saveGameSelection()" class="w-full py-3 rounded-xl bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-400 hover:to-emerald-400 text-dark-900 font-bold transition shadow-lg shadow-teal-500/20 text-sm">
+                    Save Preferences & View Dashboard
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Top Navigation -->
+    <header class="border-b border-white/10 bg-dark-900/80 backdrop-blur sticky top-0 z-50 px-6 py-4">
+        <div class="max-w-7xl mx-auto flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-teal-500 via-indigo-500 to-amber-500 flex items-center justify-center text-xl shadow-lg shadow-teal-500/20">
+                    🎮
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold tracking-tight bg-gradient-to-r from-teal-400 via-indigo-300 to-amber-300 bg-clip-text text-transparent">
+                        Game Tracker
+                    </h1>
+                    <p class="text-xs text-slate-400">Genshin Impact & Honkai: Star Rail Monitor</p>
+                </div>
+            </div>
+
+            <!-- Tracker Status Pill & Game Filter Button -->
+            <div class="flex items-center space-x-3">
+                <button onclick="openGameSelector()" class="flex items-center space-x-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-dark-700 hover:bg-dark-600 border border-white/10 text-slate-300 hover:text-white transition shadow-sm" title="Choose Games to Display">
+                    <span>🎮</span>
+                    <span>Filter Games</span>
+                </button>
+                <div id="connectionPill" class="flex items-center space-x-2 text-xs px-3 py-1.5 rounded-full bg-slate-800 border border-slate-700 text-slate-400">
+                    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                    <span>Tracker Active</span>
+                </div>
+                <button onclick="fetchAllData()" class="p-2 rounded-lg bg-dark-700 hover:bg-dark-600 transition text-slate-300 hover:text-white" title="Refresh Now">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-6 pt-8 space-y-8">
+
+        <!-- Live Status Hero Card -->
+        <div id="liveStatusContainer" class="glass-card rounded-2xl p-6 transition-all duration-300 border border-white/10">
+            <div class="flex flex-col md:flex-row items-center justify-between gap-6">
+                <div class="flex items-center space-x-5">
+                    <div id="liveIcon" class="w-16 h-16 rounded-2xl bg-dark-700/90 border border-white/10 flex items-center justify-center text-3xl">
+                        ⏳
+                    </div>
+                    <div>
+                        <div class="flex items-center space-x-3">
+                            <span id="liveBadge" class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-800 text-slate-400 border border-slate-700">
+                                STANDBY
+                            </span>
+                            <span id="livePid" class="text-xs font-mono text-slate-500"></span>
+                        </div>
+                        <h2 id="liveTitle" class="text-2xl font-bold mt-1 text-slate-200">
+                            Waiting for game launch...
+                        </h2>
+                        <p id="liveSub" class="text-sm text-slate-400 mt-0.5">
+                            Launch Genshin Impact or Honkai: Star Rail; playtime will record automatically.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Live Timer Display -->
+                <div class="text-right flex flex-col items-center md:items-end">
+                    <span class="text-xs uppercase tracking-wider text-slate-400 font-medium">Session Duration</span>
+                    <div id="liveTimer" class="text-4xl md:text-5xl font-mono font-bold tracking-tight text-slate-300 mt-1">
+                        00:00:00
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Key Metrics Row -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <!-- Metric 1: Today -->
+            <div class="glass-card rounded-xl p-5 border border-white/5">
+                <div class="flex justify-between items-start">
+                    <span class="text-xs font-semibold uppercase tracking-wider text-teal-400">Today's Playtime</span>
+                    <span class="text-lg">☀️</span>
+                </div>
+                <div id="metricToday" class="text-3xl font-bold mt-2 text-slate-100">0m</div>
+                <p class="text-xs text-slate-400 mt-1">Since 12:00 AM local time</p>
+            </div>
+
+            <!-- Metric 2: This Week -->
+            <div class="glass-card rounded-xl p-5 border border-white/5">
+                <div class="flex justify-between items-start">
+                    <span class="text-xs font-semibold uppercase tracking-wider text-amber-400">Past 7 Days</span>
+                    <span class="text-lg">📅</span>
+                </div>
+                <div id="metricWeek" class="text-3xl font-bold mt-2 text-slate-100">0m</div>
+                <p class="text-xs text-slate-400 mt-1">Rolling 7-day total</p>
+            </div>
+
+            <!-- Metric 3: Total -->
+            <div class="glass-card rounded-xl p-5 border border-white/5">
+                <div class="flex justify-between items-start">
+                    <span class="text-xs font-semibold uppercase tracking-wider text-indigo-400">All-Time Playtime</span>
+                    <span class="text-lg">🏆</span>
+                </div>
+                <div id="metricTotal" class="text-3xl font-bold mt-2 text-slate-100">0m</div>
+                <p class="text-xs text-slate-400 mt-1" id="metricSessions">0 total sessions logged</p>
+            </div>
+
+            <!-- Metric 4: Longest Session -->
+            <div class="glass-card rounded-xl p-5 border border-white/5">
+                <div class="flex justify-between items-start">
+                    <span class="text-xs font-semibold uppercase tracking-wider text-purple-400">Longest Session</span>
+                    <span class="text-lg">⚡</span>
+                </div>
+                <div id="metricLongest" class="text-3xl font-bold mt-2 text-slate-100">0m</div>
+                <p class="text-xs text-slate-400 mt-1" id="metricTopGame">No sessions yet</p>
+            </div>
+        </div>
+
+        <!-- Per-Game Cards Grid (Genshin Impact & Honkai: Star Rail) -->
+        <div id="gameCardsContainer" class="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <!-- Dynamically populated per-game cards -->
+        </div>
+
+        <!-- Charts Section -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Trend Bar/Line Chart (2 cols) -->
+            <div class="glass-card rounded-2xl p-6 lg:col-span-2 border border-white/5 flex flex-col justify-between">
+                <div class="flex items-center justify-between mb-4">
+                    <div>
+                        <h3 class="text-lg font-bold text-slate-200">Daily Playtime Trends</h3>
+                        <p class="text-xs text-slate-400">Playtime hours logged over the last 14 days</p>
+                    </div>
+                    <span class="text-xs px-2.5 py-1 rounded bg-dark-700 text-slate-300 font-mono">Hours / Day</span>
+                </div>
+                <div class="relative h-72 w-full">
+                    <canvas id="trendChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Distribution Doughnut Chart (1 col) -->
+            <div class="glass-card rounded-2xl p-6 border border-white/5 flex flex-col justify-between">
+                <div class="mb-4">
+                    <h3 class="text-lg font-bold text-slate-200">Game Share</h3>
+                    <p class="text-xs text-slate-400">Playtime split across games</p>
+                </div>
+                <div class="relative h-64 w-full flex items-center justify-center">
+                    <canvas id="distChart"></canvas>
+                </div>
+                <div id="distLegend" class="mt-4 space-y-1.5 text-xs">
+                    <!-- Populated dynamically -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Sessions History -->
+        <div class="glass-card rounded-2xl p-6 border border-white/5 space-y-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h3 class="text-lg font-bold text-slate-200">Recent Sessions</h3>
+                    <p class="text-xs text-slate-400">Detailed timeline of past play sessions</p>
+                </div>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-sm text-slate-300">
+                    <thead class="text-xs uppercase bg-dark-700/60 text-slate-400 font-semibold border-b border-white/5">
+                        <tr>
+                            <th class="px-4 py-3 rounded-l-lg">Game</th>
+                            <th class="px-4 py-3">Date</th>
+                            <th class="px-4 py-3">Start Time</th>
+                            <th class="px-4 py-3">End Time</th>
+                            <th class="px-4 py-3 rounded-r-lg text-right">Duration</th>
+                        </tr>
+                    </thead>
+                    <tbody id="sessionsTableBody" class="divide-y divide-white/5 font-normal">
+                        <tr>
+                            <td colspan="5" class="text-center py-8 text-slate-500">
+                                No sessions recorded yet. Launch a game to start tracking!
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </main>
+
+    <footer class="max-w-7xl mx-auto px-6 mt-12 text-center text-xs text-slate-500">
+        HoYoverse Playtime Tracker • Background Agent Active • Runs locally on port 5000
+    </footer>
+
+    <script>
+        let trendChartInstance = null;
+        let distChartInstance = null;
+        let activeSessionState = null;
+        let sessionTimerInterval = null;
+
+        let selectedGames = ['genshin', 'star_rail'];
+        try {
+            const saved = localStorage.getItem('tracked_games_selected');
+            if (saved) {
+                selectedGames = JSON.parse(saved);
+                if (!Array.isArray(selectedGames) || selectedGames.length === 0) {
+                    selectedGames = ['genshin', 'star_rail'];
+                }
+            }
+        } catch (e) {
+            selectedGames = ['genshin', 'star_rail'];
+        }
+
+        function openGameSelector() {
+            updateModalUI();
+            const modal = document.getElementById('gameSelectorModal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function closeGameSelector() {
+            const modal = document.getElementById('gameSelectorModal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        function toggleGameOption(gameKey) {
+            if (selectedGames.includes(gameKey)) {
+                if (selectedGames.length === 1) {
+                    return; // Keep at least one selected
+                }
+                selectedGames = selectedGames.filter(k => k !== gameKey);
+            } else {
+                selectedGames.push(gameKey);
+            }
+            updateModalUI();
+        }
+
+        function updateModalUI() {
+            const isGenshin = selectedGames.includes('genshin');
+            const isStarRail = selectedGames.includes('star_rail');
+
+            const optG = document.getElementById('optGenshin');
+            const chkG = document.getElementById('checkGenshin');
+            if (optG && chkG) {
+                if (isGenshin) {
+                    optG.className = 'cursor-pointer rounded-xl p-4 border transition-all duration-200 flex flex-col items-center text-center space-y-3 bg-teal-500/10 border-teal-500 shadow-lg shadow-teal-500/10';
+                    chkG.classList.remove('hidden');
+                } else {
+                    optG.className = 'cursor-pointer rounded-xl p-4 border transition-all duration-200 flex flex-col items-center text-center space-y-3 bg-dark-800/40 border-white/5 opacity-50 hover:opacity-80';
+                    chkG.classList.add('hidden');
+                }
+            }
+
+            const optS = document.getElementById('optStarRail');
+            const chkS = document.getElementById('checkStarRail');
+            if (optS && chkS) {
+                if (isStarRail) {
+                    optS.className = 'cursor-pointer rounded-xl p-4 border transition-all duration-200 flex flex-col items-center text-center space-y-3 bg-amber-500/10 border-amber-500 shadow-lg shadow-amber-500/10';
+                    chkS.classList.remove('hidden');
+                } else {
+                    optS.className = 'cursor-pointer rounded-xl p-4 border transition-all duration-200 flex flex-col items-center text-center space-y-3 bg-dark-800/40 border-white/5 opacity-50 hover:opacity-80';
+                    chkS.classList.add('hidden');
+                }
+            }
+        }
+
+        function saveGameSelection() {
+            localStorage.setItem('tracked_games_selected', JSON.stringify(selectedGames));
+            closeGameSelector();
+            fetchAllData();
+        }
+
+        function formatSecondsToHMS(totalSec) {
+            const h = Math.floor(totalSec / 3600);
+            const m = Math.floor((totalSec % 3600) / 60);
+            const s = totalSec % 60;
+            return [
+                h.toString().padStart(2, '0'),
+                m.toString().padStart(2, '0'),
+                s.toString().padStart(2, '0')
+            ].join(':');
+        }
+
+        async function fetchLiveStatus() {
+            try {
+                const res = await fetch('/api/status');
+                const data = await res.json();
+                updateLiveUI(data);
+            } catch (err) {
+                console.error("Status fetch error", err);
+            }
+        }
+
+        function updateLiveUI(statusData) {
+            const container = document.getElementById('liveStatusContainer');
+            const icon = document.getElementById('liveIcon');
+            const badge = document.getElementById('liveBadge');
+            const pid = document.getElementById('livePid');
+            const title = document.getElementById('liveTitle');
+            const sub = document.getElementById('liveSub');
+            const timer = document.getElementById('liveTimer');
+
+            if (statusData.is_gaming && statusData.primary_session) {
+                const session = statusData.primary_session;
+                activeSessionState = session;
+
+                container.classList.add('pulse-glow', 'border-teal-500/40');
+                container.style.background = 'radial-gradient(ellipse at top, rgba(0,210,190,0.15) 0%, rgba(16,22,34,0.85) 70%)';
+
+                if (session.icon && (session.icon.startsWith('/') || session.icon.startsWith('.'))) {
+                    icon.innerHTML = `<img src="${session.icon}" class="w-12 h-12 object-contain drop-shadow" alt="${session.game_name}">`;
+                } else if (session.game_key === 'genshin') {
+                    icon.innerHTML = `<img src="/assets/Genshin_Impact_logo.webp" class="w-12 h-12 object-contain drop-shadow" alt="Genshin Impact">`;
+                } else if (session.game_key === 'star_rail') {
+                    icon.innerHTML = `<img src="/assets/HSR_logo.png" class="w-12 h-12 object-contain drop-shadow" alt="Honkai: Star Rail">`;
+                } else {
+                    icon.innerHTML = '🎮';
+                }
+                icon.className = 'w-16 h-16 rounded-2xl bg-dark-800/90 border border-white/10 flex items-center justify-center p-2 shadow-lg shadow-teal-500/20';
+
+                badge.className = 'px-2.5 py-0.5 rounded-full text-xs font-semibold bg-teal-500/20 text-teal-300 border border-teal-500/40 animate-pulse';
+                badge.innerText = 'PLAYING NOW';
+                pid.innerText = `PID: ${session.pid}`;
+                title.innerText = session.game_name;
+                sub.innerText = `Started at ${session.start_time} • Actively tracking`;
+                timer.className = 'text-4xl md:text-5xl font-mono font-bold tracking-tight text-teal-300 mt-1';
+            } else {
+                activeSessionState = null;
+                container.classList.remove('pulse-glow', 'border-teal-500/40');
+                container.style.background = '';
+
+                icon.innerHTML = '⏳';
+                icon.className = 'w-16 h-16 rounded-2xl bg-dark-700/90 border border-white/10 flex items-center justify-center text-3xl';
+
+                badge.className = 'px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-800 text-slate-400 border border-slate-700';
+                badge.innerText = 'STANDBY';
+
+                pid.innerText = '';
+                title.innerText = 'Waiting for game launch...';
+                sub.innerText = 'Launch Genshin Impact or Honkai; playtime will record automatically.';
+                timer.innerText = '00:00:00';
+                timer.className = 'text-4xl md:text-5xl font-mono font-bold tracking-tight text-slate-400 mt-1';
+            }
+        }
+
+        function runLiveStopwatch() {
+            if (activeSessionState) {
+                activeSessionState.current_duration_seconds += 1;
+                document.getElementById('liveTimer').innerText = formatSecondsToHMS(activeSessionState.current_duration_seconds);
+            }
+        }
+
+        async function fetchSummary() {
+            try {
+                const res = await fetch('/api/summary');
+                const data = await res.json();
+
+                document.getElementById('metricToday').innerText = data.today_formatted || data.today_playtime_formatted || '0s';
+                document.getElementById('metricWeek').innerText = data.week_formatted || data.week_playtime_formatted || '0s';
+                document.getElementById('metricTotal').innerText = data.total_formatted || data.total_playtime_formatted || '0s';
+                document.getElementById('metricSessions').innerText = `${data.total_sessions} total sessions logged`;
+                document.getElementById('metricLongest').innerText = data.longest_formatted || data.longest_session_formatted || '0s';
+
+                if (data.most_played) {
+                    document.getElementById('metricTopGame').innerText = `Top: ${data.most_played.game_name} (${data.most_played.formatted})`;
+                } else {
+                    document.getElementById('metricTopGame').innerText = 'No sessions yet';
+                }
+
+                // Render Per Game Cards
+                renderGameCards(data.per_game);
+
+                // Render Doughnut Chart
+                renderDistChart(data.per_game);
+            } catch (err) {
+                console.error("Summary fetch error", err);
+            }
+        }
+
+        function renderGameCards(perGame) {
+            const container = document.getElementById('gameCardsContainer');
+            container.innerHTML = '';
+
+            const displayKeys = Object.keys(perGame).filter(k => selectedGames.includes(k));
+            if (displayKeys.length === 1) {
+                container.className = 'grid grid-cols-1 max-w-xl mx-auto gap-5';
+            } else {
+                container.className = 'grid grid-cols-1 md:grid-cols-2 gap-5';
+            }
+
+            for (const key of displayKeys) {
+                const game = perGame[key];
+                let iconHtml = `<span class="text-2xl">🎮</span>`;
+                if (key === 'genshin' || (game.game_name && game.game_name.toLowerCase().includes('genshin'))) {
+                    iconHtml = `<img src="/assets/Genshin_Impact_logo.webp" class="w-10 h-10 object-contain rounded-xl p-1 bg-dark-800/80 border border-white/10 shadow-sm shrink-0" alt="Genshin Impact" onerror="this.outerHTML='<span class=\\'text-2xl\\'>🍃</span>'">`;
+                } else if (key === 'star_rail' || (game.game_name && game.game_name.toLowerCase().includes('star rail'))) {
+                    iconHtml = `<img src="/assets/HSR_logo.png" class="w-10 h-10 object-contain rounded-xl p-1 bg-dark-800/80 border border-white/10 shadow-sm shrink-0" alt="Honkai: Star Rail" onerror="this.outerHTML='<span class=\\'text-2xl\\'>🚂</span>'">`;
+                } else if (game.icon && (game.icon.startsWith('/') || game.icon.startsWith('.'))) {
+                    iconHtml = `<img src="${game.icon}" class="w-10 h-10 object-contain rounded-xl p-1 bg-dark-800/80 border border-white/10 shadow-sm shrink-0" alt="${game.game_name}" onerror="this.outerHTML='<span class=\\'text-2xl\\'>🎮</span>'">`;
+                } else if (game.icon) {
+                    iconHtml = `<span class="text-2xl">${game.icon}</span>`;
+                }
+
+                const card = document.createElement('div');
+                card.className = 'glass-card rounded-xl p-5 border border-white/5 relative overflow-hidden group hover:border-white/20 transition';
+                
+                card.innerHTML = `
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="flex items-center space-x-3">
+                            ${iconHtml}
+                            <h4 class="font-bold text-slate-100 text-lg">${game.game_name}</h4>
+                        </div>
+                        <span class="w-3 h-3 rounded-full" style="background-color: ${game.color};"></span>
+                    </div>
+                    <div class="space-y-1">
+                        <div class="text-2xl font-bold font-mono" style="color: ${game.color};">${game.total_formatted}</div>
+                        <div class="flex justify-between text-xs text-slate-400 pt-2 border-t border-white/5">
+                            <span>${game.session_count} sessions</span>
+                            <span>Best: ${game.longest_formatted}</span>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(card);
+            }
+        }
+
+        async function fetchChart() {
+            try {
+                const res = await fetch('/api/chart?days=14');
+                const chartData = await res.json();
+                renderTrendChart(chartData);
+            } catch (err) {
+                console.error("Chart fetch error", err);
+            }
+        }
+
+        function renderTrendChart(data) {
+            const ctx = document.getElementById('trendChart').getContext('2d');
+
+            const datasets = data.datasets
+                .filter(ds => selectedGames.includes(ds.game_key))
+                .map(ds => ({
+                    label: ds.label,
+                    data: ds.data,
+                    backgroundColor: ds.color + 'aa',
+                    borderColor: ds.color,
+                    borderWidth: 1.5,
+                    borderRadius: 4,
+                    stack: 'playtime'
+                }));
+
+            if (trendChartInstance) {
+                trendChartInstance.data.labels = data.labels;
+                trendChartInstance.data.datasets = datasets;
+                trendChartInstance.update();
+                return;
+            }
+
+            trendChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: data.labels,
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            labels: { color: '#94a3b8', font: { family: 'Outfit', size: 12 } }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: ctx => `${ctx.dataset.label}: ${ctx.raw} hrs`
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            stacked: true,
+                            grid: { display: false },
+                            ticks: { color: '#64748b', font: { family: 'Outfit' } }
+                        },
+                        y: {
+                            stacked: true,
+                            grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                            ticks: {
+                                color: '#64748b',
+                                font: { family: 'Outfit' },
+                                callback: val => `${val}h`
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderDistChart(perGame) {
+            const ctx = document.getElementById('distChart').getContext('2d');
+            const legendEl = document.getElementById('distLegend');
+            legendEl.innerHTML = '';
+
+            const labels = [];
+            const data = [];
+            const colors = [];
+
+            for (const [key, g] of Object.entries(perGame)) {
+                if (selectedGames.includes(key) && g.total_seconds > 0) {
+                    labels.push(g.game_name);
+                    data.push(Math.round(g.total_seconds / 60)); // minutes
+                    colors.push(g.color);
+
+                    let iconHtml = `<span class="w-2.5 h-2.5 rounded-full" style="background-color: ${g.color}"></span>`;
+                    if (key === 'genshin' || (g.game_name && g.game_name.toLowerCase().includes('genshin'))) {
+                        iconHtml = `<img src="/assets/Genshin_Impact_logo.webp" class="w-4 h-4 object-contain rounded shrink-0" alt="Genshin Impact">`;
+                    } else if (key === 'star_rail' || (g.game_name && g.game_name.toLowerCase().includes('star rail'))) {
+                        iconHtml = `<img src="/assets/HSR_logo.png" class="w-4 h-4 object-contain rounded shrink-0" alt="Honkai: Star Rail">`;
+                    } else if (g.icon && (g.icon.startsWith('/') || g.icon.startsWith('.'))) {
+                        iconHtml = `<img src="${g.icon}" class="w-4 h-4 object-contain rounded shrink-0" alt="${g.game_name}">`;
+                    }
+
+                    const legItem = document.createElement('div');
+                    legItem.className = 'flex items-center justify-between';
+                    legItem.innerHTML = `
+                        <div class="flex items-center space-x-2">
+                            ${iconHtml}
+                            <span class="text-slate-300">${g.game_name}</span>
+                        </div>
+                        <span class="font-mono text-slate-400">${g.total_formatted}</span>
+                    `;
+                    legendEl.appendChild(legItem);
+                }
+            }
+
+            // If no data, show placeholder
+            if (data.length === 0) {
+                labels.push('No data yet');
+                data.push(1);
+                colors.push('#334155');
+            }
+
+            if (distChartInstance) {
+                distChartInstance.data.labels = labels;
+                distChartInstance.data.datasets[0].data = data;
+                distChartInstance.data.datasets[0].backgroundColor = colors;
+                distChartInstance.update();
+                return;
+            }
+
+            distChartInstance = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        backgroundColor: colors,
+                        borderWidth: 0,
+                        hoverOffset: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '72%',
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: ctx => `${ctx.label}: ${ctx.raw} mins`
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        async function fetchSessions() {
+            try {
+                const res = await fetch('/api/sessions?limit=50');
+                const sessions = await res.json();
+                const tbody = document.getElementById('sessionsTableBody');
+
+                const filtered = (sessions || []).filter(s => selectedGames.includes(s.game_key));
+
+                if (filtered.length === 0) {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="5" class="text-center py-8 text-slate-500">
+                                No sessions recorded yet for your selected games. Launch a game to start tracking!
+                            </td>
+                        </tr>
+                    `;
+                    return;
+                }
+
+                tbody.innerHTML = '';
+                filtered.forEach(s => {
+                    let iconHtml = `<span class="text-base">🎮</span>`;
+                    if (s.game_key === 'genshin' || (s.game_name && s.game_name.toLowerCase().includes('genshin'))) {
+                        iconHtml = `<img src="/assets/Genshin_Impact_logo.webp" class="w-6 h-6 object-contain rounded p-0.5 bg-dark-800/80 border border-white/10 shrink-0" alt="Genshin Impact" onerror="this.outerHTML='<span>🍃</span>'">`;
+                    } else if (s.game_key === 'star_rail' || (s.game_name && s.game_name.toLowerCase().includes('star rail'))) {
+                        iconHtml = `<img src="/assets/HSR_logo.png" class="w-6 h-6 object-contain rounded p-0.5 bg-dark-800/80 border border-white/10 shrink-0" alt="Honkai: Star Rail" onerror="this.outerHTML='<span>🚂</span>'">`;
+                    } else if (s.icon && (s.icon.startsWith('/') || s.icon.startsWith('.'))) {
+                        iconHtml = `<img src="${s.icon}" class="w-6 h-6 object-contain rounded p-0.5 bg-dark-800/80 border border-white/10 shrink-0" alt="${s.game_name}">`;
+                    } else if (s.icon) {
+                        iconHtml = `<span class="text-base">${s.icon}</span>`;
+                    }
+
+                    const tr = document.createElement('tr');
+                    tr.className = 'hover:bg-white/5 transition';
+                    tr.innerHTML = `
+                        <td class="px-4 py-3 flex items-center space-x-2.5">
+                            ${iconHtml}
+                            <span class="font-semibold text-slate-200">${s.game_name}</span>
+                        </td>
+                        <td class="px-4 py-3 font-mono text-xs text-slate-400">${s.date}</td>
+                        <td class="px-4 py-3 font-mono text-xs text-slate-400">${s.start_time.split(' ')[1] || s.start_time}</td>
+                        <td class="px-4 py-3 font-mono text-xs text-slate-400">${s.end_time.split(' ')[1] || s.end_time}</td>
+                        <td class="px-4 py-3 font-mono text-xs text-right font-bold" style="color: ${s.color};">
+                            ${s.duration_formatted}
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } catch (err) {
+                console.error("Sessions fetch error", err);
+            }
+        }
+
+        function fetchAllData() {
+            fetchLiveStatus();
+            fetchSummary();
+            fetchChart();
+            fetchSessions();
+        }
+
+        // PWA Service Worker & Install Prompt Handling
+        let deferredInstallPrompt = null;
+        const installBtn = document.getElementById('installAppBtn');
+
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js').catch(err => {
+                    console.log('ServiceWorker registration error:', err);
+                });
+            });
+        }
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredInstallPrompt = e;
+            if (installBtn) {
+                installBtn.classList.remove('hidden');
+                installBtn.classList.add('inline-flex');
+            }
+        });
+
+        if (installBtn) {
+            installBtn.addEventListener('click', async () => {
+                if (!deferredInstallPrompt) return;
+                deferredInstallPrompt.prompt();
+                const choice = await deferredInstallPrompt.userChoice;
+                if (choice.outcome === 'accepted') {
+                    installBtn.classList.add('hidden');
+                }
+                deferredInstallPrompt = null;
+            });
+        }
+
+        window.addEventListener('appinstalled', () => {
+            if (installBtn) installBtn.classList.add('hidden');
+            console.log('HoYoverse Playtime Tracker was installed.');
+        });
+
+        // Initialize and setup intervals
+        document.addEventListener('DOMContentLoaded', () => {
+            // First run check: dynamically prompt the user to choose their games!
+            if (!localStorage.getItem('tracked_games_selected')) {
+                openGameSelector();
+            }
+
+            fetchAllData();
+
+            // Live stopwatch updates every 1 second
+            setInterval(runLiveStopwatch, 1000);
+
+            // Poll live game process status every 3 seconds
+            setInterval(fetchLiveStatus, 3000);
+
+            // Refresh charts, summaries and tables every 10 seconds
+            setInterval(() => {
+                fetchSummary();
+                fetchChart();
+                fetchSessions();
+            }, 10000);
+        });
+    </script>
+</body>
+</html>
